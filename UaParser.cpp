@@ -10,7 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include <yaml-cpp/yaml.h>
 
-namespace {
+namespace UaParser {
 
 typedef std::map<std::string::size_type, size_t> i2tuple;
 
@@ -257,7 +257,6 @@ Agent parse_os_impl(const std::string& ua, const UAStore* ua_store) {
   return os;
 }
 
-}  // namespace
 
 UserAgentParser::UserAgentParser(const std::string& regexes_file_path) : regexes_file_path_{regexes_file_path} {
   ua_store_ = new UAStore(regexes_file_path);
@@ -276,3 +275,6 @@ UserAgent UserAgentParser::parse(const std::string& ua) const {
 
   return {device, os, browser};
 }
+
+}  // namespace
+

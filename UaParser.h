@@ -2,6 +2,8 @@
 
 #include <string>
 
+namespace UaParser {
+
 struct Generic {
   std::string family;
 };
@@ -47,3 +49,5 @@ class UserAgentParser {
   const std::string regexes_file_path_;
   const void* ua_store_;
 };
+
+} // namespace
