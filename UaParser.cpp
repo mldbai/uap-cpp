@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <regex>
 
-#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <yaml-cpp/yaml.h>
 
@@ -17,7 +17,7 @@ typedef std::map<std::string::size_type, size_t> i2tuple;
 struct GenericStore {
   std::string replacement;
   i2tuple replacementMap;
-  boost::regex regExpr;
+  std::regex regExpr;
 };
 
 struct DeviceStore : GenericStore {
@@ -50,11 +50,12 @@ void mark_placeholders(i2tuple& replacement_map, const std::string& device_prope
 DeviceStore fill_device_store(const YAML::Node& device_parser) {
   DeviceStore device;
   bool regex_flag = false;
+  std::string regex;
   for (auto it = device_parser.begin(); it != device_parser.end(); ++it) {
     const auto key = it->first.as<std::string>();
     const auto value = it->second.as<std::string>();
     if (key == "regex") {
-      device.regExpr.assign(value, boost::regex::optimize | boost::regex::normal);
+        regex = value;
     } else if (key == "regex_flag" && value == "i") {
       regex_flag = true;
     } else if (key == "device_replacement") {
@@ -71,7 +72,10 @@ DeviceStore fill_device_store(const YAML::Node& device_parser) {
     }
   }
   if (regex_flag == true) {
-    device.regExpr.assign(device.regExpr.str(), boost::regex::optimize | boost::regex::icase | boost::regex::normal);
+    device.regExpr.assign(regex, std::regex::optimize | std::regex::icase | std::regex::ECMAScript);
+  }
+  else {
+    device.regExpr.assign(regex, std::regex::optimize | std::regex::ECMAScript);
   }
   return device;
 }
@@ -87,7 +91,7 @@ AgentStore fill_agent_store(const YAML::Node& node,
     const auto key = it->first.as<std::string>();
     const auto value = it->second.as<std::string>();
     if (key == "regex") {
-      agent_store.regExpr.assign(value, boost::regex::optimize | boost::regex::normal);
+      agent_store.regExpr.assign(value, std::regex::optimize | std::regex::ECMAScript);
     } else if (key == repl) {
       agent_store.replacement = value;
       mark_placeholders(agent_store.replacementMap, agent_store.replacement);
@@ -137,7 +141,7 @@ struct UAStore {
 // HELPERS //
 /////////////
 
-void replace_all_placeholders(std::string& ua_property, const boost::smatch& result, const i2tuple& replacement_map) {
+void replace_all_placeholders(std::string& ua_property, const std::smatch& result, const i2tuple& replacement_map) {
   for (auto iter = replacement_map.rbegin(); iter != replacement_map.rend(); ++iter) {
     ua_property.replace(iter->first, 2, result[iter->second].str());
   }
@@ -149,9 +153,9 @@ Device parse_device_impl(const std::string& ua, const UAStore* ua_store) {
   Device device;
 
   for (const auto& d : ua_store->deviceStore) {
-    boost::smatch m;
+    std::smatch m;
 
-    if (boost::regex_search(ua, m, d.regExpr)) {
+    if (std::regex_search(ua, m, d.regExpr)) {
       if (d.replacement.empty() && m.size() > 1) {
         device.family = m[1].str();
       } else {
@@ -185,13 +189,13 @@ Device parse_device_impl(const std::string& ua, const UAStore* ua_store) {
 }
 
 template <class AGENT, class AGENT_STORE>
-void fill_agent(AGENT& agent, const AGENT_STORE& store, const boost::smatch& m, const bool os) {
+void fill_agent(AGENT& agent, const AGENT_STORE& store, const std::smatch& m, const bool os) {
   if (m.size() > 1) {
     agent.family =
-        !store.replacement.empty() ? boost::regex_replace(store.replacement, boost::regex("\\$1"), m[1].str()) : m[1];
+        !store.replacement.empty() ? std::regex_replace(store.replacement, std::regex("\\$1"), m[1].str()) : m[1];
   } else {
     agent.family =
-        !store.replacement.empty() ? boost::regex_replace(store.replacement, boost::regex("\\$1"), m[0].str()) : m[0];
+        !store.replacement.empty() ? std::regex_replace(store.replacement, std::regex("\\$1"), m[0].str()) : m[0];
   }
   boost::algorithm::trim(agent.family);
 
@@ -229,8 +233,8 @@ Agent parse_browser_impl(const std::string& ua, const UAStore* ua_store) {
   Agent browser;
 
   for (const auto& b : ua_store->browserStore) {
-    boost::smatch m;
-    if (boost::regex_search(ua, m, b.regExpr)) {
+    std::smatch m;
+    if (std::regex_search(ua, m, b.regExpr)) {
       fill_agent(browser, b, m, false);
       break;
     } else {
@@ -245,8 +249,8 @@ Agent parse_os_impl(const std::string& ua, const UAStore* ua_store) {
   Agent os;
 
   for (const auto& o : ua_store->osStore) {
-    boost::smatch m;
-    if (boost::regex_search(ua, m, o.regExpr)) {
+    std::smatch m;
+    if (std::regex_search(ua, m, o.regExpr)) {
       fill_agent(os, o, m, true);
       break;
     } else {
